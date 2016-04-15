@@ -1,4 +1,4 @@
-#include "../headers/piggy1.h"
+#include "../headers/piggy.h"
 
 #define DEBUG 0
 #define BUFFER_SIZE 256
@@ -14,6 +14,12 @@
 /* Runs main networking routine */
 int activate (struct connection_t co) {
 	char buffer[BUFFER_SIZE];
+	fd_set master_set, read_set;
+	int max_fd;
+
+	/* Clear file descriptor sets */
+	FD_ZERO(&master_set);
+	FD_ZERO(&read_set);
 
 	/* If the chain has an open left side */
 	if (!co.NO_LEFT) 
@@ -25,36 +31,68 @@ int activate (struct connection_t co) {
 
 	/* If the chain has an open right side */
 	if (!co.NO_RIGHT) 
-		establishright(&co);	    	
+		establishright(&co);	
+
+	/* Add needed file descriptors to master set */
+	FD_SET(co.LEFT_FACING_SOCKET, &master_set);
+	FD_SET(co.RIGHT_FACING_SOCKET, &master_set);
+	FD_SET(STDIN_FILENO, &master_set);
+
+	/* Establish largest file descriptor */
+	if (co.LEFT_FACING_SOCKET > co.RIGHT_FACING_SOCKET) 
+		max_fd = co.LEFT_FACING_SOCKET;
+	else
+		max_fd = co.RIGHT_FACING_SOCKET;
 
 	/* Running loop */
 	while (1) {
+		read_set = master_set;
 
-		/* TAIL */
-		if (co.NO_RIGHT) {
-			/* Read from left and display */
-			fprintf(stdout, "%s", datafromleft(&co));
-		}
+		if (select(max_fd + 1, &read_set, NULL, NULL, NULL) == -1) 
+			error("Could not select from read_set");
 
-		/* HEAD */
-		if (co.NO_LEFT) {
+		/* Keyboard Input Handling */
+		if (FD_ISSET(STDIN_FILENO, &read_set)) {
 			bzero(buffer, BUFFER_SIZE);
 
-			/* Read from STDIN and send to right */
-			fgets(buffer, BUFFER_SIZE-1, stdin);
-			datatoright(buffer, &co);
+			if (read(STDIN_FILENO, buffer, BUFFER_SIZE) < 0)
+					error ("Could not read from Standard In");
+
+			if (!co.NO_RIGHT)
+				datatoright(buffer, &co);
+
+			if (!co.NO_LEFT) 
+				datatoleft(buffer, &co);
 		}
 
-		/* MIDDLE */
-		if (!co.NO_LEFT && !co.NO_RIGHT) {
+		/* Incoming Left Transmission Handling */
+		if (FD_ISSET(co.LEFT_FACING_SOCKET, &read_set) && !co.NO_LEFT) {
 			bzero(buffer, BUFFER_SIZE);
-
-			/* Read from left and display */
 			strcpy(buffer, datafromleft(&co));
-			fprintf(stdout, "%s", buffer);
 
-			/* Send from left to right */
-			datatoright(buffer, &co);
+			if (co.DISPLAY_LEFT_RIGHT)
+				fprintf(stdout, "%s", buffer);
+
+			if (!co.NO_RIGHT)
+				datatoright(buffer, &co);
+
+			if (co.LOOP_RIGHT && !co.NO_LEFT)
+				datatoleft(buffer, &co);
+		}
+
+		/* Incoming Right Transmission Handling */
+		if (FD_ISSET(co.RIGHT_FACING_SOCKET, &read_set) && !co.NO_RIGHT) {
+			bzero(buffer, BUFFER_SIZE);
+			strcpy(buffer, datafromright(&co));
+
+			if (co.DISPLAY_RIGHT_LEFT)
+				fprintf(stdout, "%s", buffer);
+
+			if (!co.NO_LEFT)
+				datatoleft(buffer, &co);
+
+			if (co.LOOP_LEFT && !co.NO_RIGHT)
+				datatoright(buffer, &co);
 		}
 	}
 
@@ -84,7 +122,7 @@ void establishleft(struct connection_t* co) {
 
 	this_address.sin_family      = DOMAIN;
 	this_address.sin_addr.s_addr = INADDR;
-	this_address.sin_port        = htons(DEFAULT_PORT);
+	this_address.sin_port        = htons(co->LEFT_LOCAL_PORT);
 
 	/* Set socket options */
 	int flag = 1;
@@ -119,8 +157,19 @@ void establishleft(struct connection_t* co) {
 	if (co->LEFT_FACING_SOCKET < 0) 
 		error("Could not accept [left] connection");
 
+	/* Verify left side connection */
+	if (co->LEFT_REMOTE_ADDR != NULL && strcmp(co->LEFT_REMOTE_ADDR, "*") != 0 && strcmp(getremoteip(co->LEFT_FACING_SOCKET), co->LEFT_REMOTE_ADDR) != 0) {
+		close(co->LEFT_FACING_SOCKET);
+		error("Invalid left remote address");
+	}
+
+	if (co->LEFT_REMOTE_PORT != 0 && strcmp(itoa(co->LEFT_REMOTE_PORT), "*") != 0 && getremoteport(co->LEFT_FACING_SOCKET) != co->LEFT_REMOTE_PORT) {
+		close(co->LEFT_FACING_SOCKET);
+		error("Invalid left remote port");
+	}
+
 	/* Colorize output */
-	fprintf(stdout, "%s\n", colorize(CYAN, "[Receiving]"));
+	fprintf(stdout, "%s\n", colorize(CYAN, "[Left Side Online]"));
 }
 
 /* Establishes a basic right side connection */
@@ -149,27 +198,38 @@ void establishright(struct connection_t* co) {
 	/* Update conn_t RIGHT_FACING_SOCKET file descriptor */
 	co->RIGHT_FACING_SOCKET = right_socket_fd;
 
-	/* Colorize output for HEAD node */
-	if (co->NO_LEFT) 
-    	fprintf(stdout, "%s\n", colorize(CYAN, "\nWhat would you like to transmit?"));	
+	/* Colorize output */
+	fprintf(stdout, "%s\n", colorize(CYAN, "[Right Side Online]"));
 }
 
 /* Writes buffer to RIGHT_FACING_SOCKET defined by conn_t */
 void datatoright (char* buffer, struct connection_t* co) {
-	char output[BUFFER_SIZE];
-	bzero (output, BUFFER_SIZE);
-
 	if (send(co->RIGHT_FACING_SOCKET, buffer, strlen(buffer), SENDFLAGS) < 0)
 		error("Could not write to [right] socket");
 }
 
+void datatoleft (char* buffer, struct connection_t* co) {
+	if (send(co->LEFT_FACING_SOCKET, buffer, strlen(buffer), SENDFLAGS) < 0)
+		error("Could not write to [left] socket");
+}
+
 /* Returns data read from LEFT_FACING_SOCKET defined by conn_t */
 char* datafromleft (struct connection_t* co) {
-	static char output[BUFFER_SIZE];
+	char output[BUFFER_SIZE];
 	bzero(output, BUFFER_SIZE);
 
 	if (recv(co->LEFT_FACING_SOCKET, output, BUFFER_SIZE-1, RECVFLAGS) < 0)
 		error("Could not read from [left] socket");
 
-	return output;
+	return strdup(output);
+}
+
+char* datafromright (struct connection_t* co) {
+	char output[BUFFER_SIZE];
+	bzero(output, BUFFER_SIZE);
+
+	if (recv(co->RIGHT_FACING_SOCKET, output, BUFFER_SIZE-1, RECVFLAGS) < 0)
+		error("Could not read from [right] socket");
+
+	return strdup(output);
 }

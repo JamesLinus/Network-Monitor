@@ -1,4 +1,4 @@
-#include "../headers/piggy1.h"
+#include "../headers/piggy.h"
 
 /* Prints RED error message to STDERR and exit(1) */
 void error (char* mod) {
@@ -36,10 +36,17 @@ int getboundport(int socket_fd) {
 void display(struct connection_t co) {
 	fprintf(stdout, "\n NOLEFT: '%d' \n", co.NO_LEFT);
 	fprintf(stdout, "NORIGHT: '%d' \n", co.NO_RIGHT);
+	fprintf(stdout, "  LOOPR: '%d' \n", co.LOOP_RIGHT);
+	fprintf(stdout, "  LOOPL: '%d' \n", co.LOOP_LEFT);
+	fprintf(stdout, "  DSPRL: '%d' \n", co.DISPLAY_RIGHT_LEFT);
+	fprintf(stdout, "  DSPLR: '%d' \n", co.DISPLAY_LEFT_RIGHT);
 	fprintf(stdout, " RRADDR: '%s' \n", co.RIGHT_REMOTE_ADDR);
 	fprintf(stdout, "  RRDNS: '%s' \n", co.RIGHT_REMOTE_DNS);
+	fprintf(stdout, " LRADDR: '%s' \n", co.LEFT_REMOTE_ADDR);
+	fprintf(stdout, "  LRDNS: '%s' \n", co.LEFT_REMOTE_DNS);
 	fprintf(stdout, " RRPORT: '%d' \n", co.RIGHT_REMOTE_PORT);
-	fprintf(stdout, " LLPORT: '%d' \n\n", co.LEFT_LOCAL_PORT);
+	fprintf(stdout, " LLPORT: '%d' \n", co.LEFT_LOCAL_PORT);
+	fprintf(stdout, " LRPORT: '%d' \n\n", co.LEFT_REMOTE_PORT);
 }
 
 /* Shitty way of converting integer to string */
@@ -56,4 +63,35 @@ char* colorize(char* color, char* string) {
 	char storage[COLOR_SIZE];
 	snprintf(storage, COLOR_SIZE, "%s%s%s", color, string, RESET);
 	return strdup(storage);
+}
+
+char* getremoteip(int socket) {
+	struct sockaddr_in s;
+	socklen_t len = sizeof(s);
+	getpeername(socket, (struct sockaddr *) &s, &len);
+
+	if (!strcmp(inet_ntoa(s.sin_addr), "127.0.0.1"))
+		return getlocalip();
+
+	return strdup(inet_ntoa(s.sin_addr));
+}
+
+char* getlocalip() {
+	char hostname[128];
+	gethostname(hostname, sizeof(hostname));
+	return ipbydns(hostname);
+}
+
+int getremoteport(int socket) {
+	struct sockaddr_in s;
+	socklen_t len = sizeof(s);
+	getpeername(socket, (struct sockaddr *) &s, &len);
+	return ntohs(s.sin_port);
+}
+
+int getlocalport(int socket) {
+	struct sockaddr_in s;
+	socklen_t len = sizeof(s);
+	getsockname(socket, (struct sockaddr *) &s, &len);
+	return ntohs(s.sin_port);
 }
