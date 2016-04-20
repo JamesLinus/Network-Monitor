@@ -13,7 +13,6 @@ Indicates that there will be no right side that will be connected to.  Creates a
 #### -rraddr [address]
 Used to specify the address of the node that a connection will be attempted on.  The address can be a direct IP address in dotted decimal notation or a DNS name that will be resolved to such.  This must always be specified unless -noright is being used.
 
-<<<<<<< HEAD
 #### -lraddr [address]
 Used to specify what addresses are valid when accepting a connection from the left side.  The value can be either a direct IP address in dotted decimal notation, a DNS name that will be resolved to such, or the value "*" (including quotation marks) to specify any address.  This flag is optional and defaults to accepting any address.
 
@@ -87,28 +86,3 @@ Enables right looping mode.  This takes incoming data flow from the left side of
 
 #### :loopl
 Enables left looping mode.  This takes the incoming data flow from the right side of a node and injects it into the outgoing data flow on the right side of the same node.
-=======
-### -lraddr [address]
-Used to specify what addresses are valid when accepting a connection from the left side.  The value can be either a direct IP address in dotted decimal notation, a DNS name that will be resolved to such, or the value "*" (including quotation marks) to specify any address.  This flag is optional and defaults to accepting any address.
-
-### -rrport [port]
-Used to specify the port of the node that a connection will be attempted on.  If this parameter is not given then it will default to 36755.
-
-### -lrport [port]
-Similar to -lraddr, this flag is used to specify what ports are valid when accepting a connection from the left side.  The value can be either a valid port number or the value "*" (including quotation marks) to specify any port.  This flag is optional and defaults to accepting any port.
-
-### -llport [port]
-This option is used to indicate what port address is to be used to listen on the left side.  If this parameter is not given then it will default to 36755.
-
-### -dsplr
-This option will display the data flow from left to right.  This flag is only effective when used in a middle chain node.
-
-### -dsprl
-This option will display the data flow from right to left.  This flag is only effective when used in a middle chain node.
-
-### -loopr
-This option takes the incoming data flow from the left side of a node and injects it into the outgoing data flow on the left side of the same node.
-
-### -loopl
-This option takes the incoming data flow from the right side of a node and injects it into the outgoing data flow on the right side of the same node.
->>>>>>> 52c7235d009955e303829bd8573d2db2a34428f7
