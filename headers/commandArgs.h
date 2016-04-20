@@ -1,7 +1,7 @@
 #include <string.h>
 
-#ifndef COMMAND
-#define COMMAND
+#ifndef COMMANDARGS
+#define COMMANDARGS
 
 struct connection_t argCheck (int argc, char* argv[]);
 

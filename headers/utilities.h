@@ -25,6 +25,7 @@ typedef struct connection_t {
 	int   DISPLAY_RIGHT_LEFT;
 	int   LOOP_RIGHT;
 	int   LOOP_LEFT;
+	int   OUTPUT_DIRECTION;
 	int   RIGHT_REMOTE_PORT;
 	int   LEFT_REMOTE_PORT;
 	int   LEFT_LOCAL_PORT;
@@ -34,12 +35,15 @@ typedef struct connection_t {
 	char* LEFT_REMOTE_DNS;
 	int   RIGHT_FACING_SOCKET;
 	int   LEFT_FACING_SOCKET;
+	int   COMMAND_MODE;
+
+	int   MAX_FD;
 } conn_t;
 
 #endif
 
-#ifndef UTIL
-#define UTIL
+#ifndef UTILITIES
+#define UTILITIES
 
 void error (char* mod);
 char* ipbydns(char* dns);

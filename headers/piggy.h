@@ -6,5 +6,6 @@
 #include "../headers/commandArgs.h"
 #include "../headers/utilities.h"
 #include "../headers/connect.h"
+#include "../headers/interact.h"
 
 #define DEFAULT_PORT 36755

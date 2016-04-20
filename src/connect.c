@@ -1,6 +1,5 @@
 #include "../headers/piggy.h"
 
-#define DEBUG 0
 #define BUFFER_SIZE 256
 
 #define DOMAIN   AF_INET
@@ -15,7 +14,6 @@
 int activate (struct connection_t co) {
 	char buffer[BUFFER_SIZE];
 	fd_set master_set, read_set;
-	int max_fd;
 
 	/* Clear file descriptor sets */
 	FD_ZERO(&master_set);
@@ -24,10 +22,6 @@ int activate (struct connection_t co) {
 	/* If the chain has an open left side */
 	if (!co.NO_LEFT) 
 		establishleft(&co);
-
-	#if DEBUG
-		display(co);
-	#endif
 
 	/* If the chain has an open right side */
 	if (!co.NO_RIGHT) 
@@ -40,59 +34,85 @@ int activate (struct connection_t co) {
 
 	/* Establish largest file descriptor */
 	if (co.LEFT_FACING_SOCKET > co.RIGHT_FACING_SOCKET) 
-		max_fd = co.LEFT_FACING_SOCKET;
+		co.MAX_FD = co.LEFT_FACING_SOCKET;
 	else
-		max_fd = co.RIGHT_FACING_SOCKET;
+		co.MAX_FD = co.RIGHT_FACING_SOCKET;
 
 	/* Running loop */
 	while (1) {
-		read_set = master_set;
-
-		if (select(max_fd + 1, &read_set, NULL, NULL, NULL) == -1) 
-			error("Could not select from read_set");
-
-		/* Keyboard Input Handling */
-		if (FD_ISSET(STDIN_FILENO, &read_set)) {
-			bzero(buffer, BUFFER_SIZE);
+		if (co.COMMAND_MODE) {
+			fprintf(stdout, ":");
+			fflush(stdout);
 
 			if (read(STDIN_FILENO, buffer, BUFFER_SIZE) < 0)
+				error ("Could not read from Standard In");
+
+			/* Rudimentary 'i' key check (requires ENTER) */
+			if (buffer[0] == 'i' && buffer[1] == '\n')
+				co.COMMAND_MODE = 0;
+
+			/* Run given interactice command */
+			metacommand(&co, buffer, &read_set);
+
+			bzero(buffer, BUFFER_SIZE);
+		}
+
+		if (!co.COMMAND_MODE) {
+			read_set = master_set;
+
+			if (select(co.MAX_FD+ 1, &read_set, NULL, NULL, NULL) == -1) 
+				error ("Could not select from read_set");
+
+			/* Keyboard Input Handling */
+			if (FD_ISSET(STDIN_FILENO, &read_set)) {
+				bzero(buffer, BUFFER_SIZE);
+
+				if (read(STDIN_FILENO, buffer, BUFFER_SIZE) < 0)
 					error ("Could not read from Standard In");
 
-			if (!co.NO_RIGHT)
-				datatoright(buffer, &co);
+				/* Rudimentary ESC key check (requires ENTER) */
+				if (buffer[0] == 27) {
+					bzero(buffer, BUFFER_SIZE);
+					co.COMMAND_MODE = 1;
+					continue;
+				}
 
-			if (!co.NO_LEFT) 
-				datatoleft(buffer, &co);
-		}
+				if (!co.NO_RIGHT && (co.OUTPUT_DIRECTION || co.NO_LEFT))
+					datatoright(buffer, &co);
 
-		/* Incoming Left Transmission Handling */
-		if (FD_ISSET(co.LEFT_FACING_SOCKET, &read_set) && !co.NO_LEFT) {
-			bzero(buffer, BUFFER_SIZE);
-			strcpy(buffer, datafromleft(&co));
+				if (!co.NO_LEFT && (!co.OUTPUT_DIRECTION || co.NO_RIGHT)) 
+					datatoleft(buffer, &co);
+			}
 
-			if (co.DISPLAY_LEFT_RIGHT)
-				fprintf(stdout, "%s", buffer);
+			/* Incoming Left Transmission Handling */
+			if (FD_ISSET(co.LEFT_FACING_SOCKET, &read_set) && !co.NO_LEFT) {
+				bzero(buffer, BUFFER_SIZE);
+				strcpy(buffer, datafromleft(&co));
 
-			if (!co.NO_RIGHT)
-				datatoright(buffer, &co);
+				if (co.DISPLAY_LEFT_RIGHT)
+					fprintf(stdout, "%s", buffer);
 
-			if (co.LOOP_RIGHT && !co.NO_LEFT)
-				datatoleft(buffer, &co);
-		}
+				if (!co.NO_RIGHT)
+					datatoright(buffer, &co);
 
-		/* Incoming Right Transmission Handling */
-		if (FD_ISSET(co.RIGHT_FACING_SOCKET, &read_set) && !co.NO_RIGHT) {
-			bzero(buffer, BUFFER_SIZE);
-			strcpy(buffer, datafromright(&co));
+				if (co.LOOP_RIGHT && !co.NO_LEFT)
+					datatoleft(buffer, &co);
+			}
 
-			if (co.DISPLAY_RIGHT_LEFT)
-				fprintf(stdout, "%s", buffer);
+			/* Incoming Right Transmission Handling */
+			if (FD_ISSET(co.RIGHT_FACING_SOCKET, &read_set) && !co.NO_RIGHT) {
+				bzero(buffer, BUFFER_SIZE);
+				strcpy(buffer, datafromright(&co));
 
-			if (!co.NO_LEFT)
-				datatoleft(buffer, &co);
+				if (co.DISPLAY_RIGHT_LEFT)
+					fprintf(stdout, "%s", buffer);
 
-			if (co.LOOP_LEFT && !co.NO_RIGHT)
-				datatoright(buffer, &co);
+				if (!co.NO_LEFT)
+					datatoleft(buffer, &co);
+
+				if (co.LOOP_LEFT && !co.NO_RIGHT)
+					datatoright(buffer, &co);
+			}
 		}
 	}
 
@@ -208,6 +228,7 @@ void datatoright (char* buffer, struct connection_t* co) {
 		error("Could not write to [right] socket");
 }
 
+/* Writes buffer to LEFT_FACING_SOCKET defined by conn_t */
 void datatoleft (char* buffer, struct connection_t* co) {
 	if (send(co->LEFT_FACING_SOCKET, buffer, strlen(buffer), SENDFLAGS) < 0)
 		error("Could not write to [left] socket");
@@ -224,6 +245,7 @@ char* datafromleft (struct connection_t* co) {
 	return strdup(output);
 }
 
+/* Returns data read from RIGHT_FACING_SOCKET defined by conn_t */
 char* datafromright (struct connection_t* co) {
 	char output[BUFFER_SIZE];
 	bzero(output, BUFFER_SIZE);

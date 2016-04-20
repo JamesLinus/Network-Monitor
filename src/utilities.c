@@ -46,7 +46,11 @@ void display(struct connection_t co) {
 	fprintf(stdout, "  LRDNS: '%s' \n", co.LEFT_REMOTE_DNS);
 	fprintf(stdout, " RRPORT: '%d' \n", co.RIGHT_REMOTE_PORT);
 	fprintf(stdout, " LLPORT: '%d' \n", co.LEFT_LOCAL_PORT);
-	fprintf(stdout, " LRPORT: '%d' \n\n", co.LEFT_REMOTE_PORT);
+	fprintf(stdout, " LRPORT: '%d' \n", co.LEFT_REMOTE_PORT);
+	fprintf(stdout, " RSOCKE: '%d' \n", co.RIGHT_FACING_SOCKET);
+	fprintf(stdout, " LSOCKE: '%d' \n", co.LEFT_FACING_SOCKET);
+	fprintf(stdout, " STDINF: '%d' \n", STDIN_FILENO);
+	fprintf(stdout, " MAX_FD: '%d' \n\n", co.MAX_FD);
 }
 
 /* Shitty way of converting integer to string */
@@ -65,6 +69,7 @@ char* colorize(char* color, char* string) {
 	return strdup(storage);
 }
 
+/* Returns the ip address of peer connected on socket */
 char* getremoteip(int socket) {
 	struct sockaddr_in s;
 	socklen_t len = sizeof(s);
@@ -76,12 +81,14 @@ char* getremoteip(int socket) {
 	return strdup(inet_ntoa(s.sin_addr));
 }
 
+/* Returns host ip address */
 char* getlocalip() {
 	char hostname[128];
 	gethostname(hostname, sizeof(hostname));
 	return ipbydns(hostname);
 }
 
+/* Returns port number of peer connected on socket */
 int getremoteport(int socket) {
 	struct sockaddr_in s;
 	socklen_t len = sizeof(s);
@@ -89,6 +96,7 @@ int getremoteport(int socket) {
 	return ntohs(s.sin_port);
 }
 
+/* Returns port number of local socket */
 int getlocalport(int socket) {
 	struct sockaddr_in s;
 	socklen_t len = sizeof(s);

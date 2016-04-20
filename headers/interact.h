@@ -1,5 +1,5 @@
 #include <sys/types.h>
-#include <sys/socket.h>
+#include <sys/select.h>
 
 #ifndef INIT
 #define INIT
@@ -30,15 +30,9 @@ typedef struct connection_t {
 
 #endif
 
-#ifndef CONNECT
-#define CONNECT
+#ifndef INTERACT
+#define INTERACT
 
-int activate(struct connection_t co);
-void establishleft(struct connection_t* co);
-void establishright(struct connection_t* co);
-void datatoleft (char* buffer, struct connection_t* co);
-void datatoright(char* buffer, struct connection_t* co);
-char* datafromleft(struct connection_t* co);
-char* datafromright (struct connection_t* co);
+int metacommand(struct connection_t* co, char* buffer, fd_set* read_set);
 
 #endif

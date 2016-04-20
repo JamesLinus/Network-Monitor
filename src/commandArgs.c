@@ -22,6 +22,12 @@ struct connection_t argCheck (int argc, char* argv[]) {
 	co.LEFT_REMOTE_ADDR = NULL;
 	co.LEFT_REMOTE_DNS = NULL;
 
+	co.RIGHT_FACING_SOCKET = 0;
+	co.LEFT_FACING_SOCKET = 0;
+
+	co.OUTPUT_DIRECTION = 1;
+	co.COMMAND_MODE = 0;
+
 	/* Find non-valued flags first */
 	for (i = 0; i < argc; i++) {
 
@@ -141,9 +147,11 @@ struct connection_t argCheck (int argc, char* argv[]) {
 		co.LOOP_LEFT = 0;
 	}
 
+	/* Resolve LocalHost ip address */
 	if (co.RIGHT_REMOTE_ADDR != NULL && !strcmp(co.RIGHT_REMOTE_ADDR, "0.0.0.0"))
 		co.RIGHT_REMOTE_ADDR = getlocalip();
 
+	/* Resolve LocalHost ip address */
 	if (co.LEFT_REMOTE_ADDR != NULL && !strcmp(co.LEFT_REMOTE_ADDR, "0.0.0.0"))
 		co.LEFT_REMOTE_ADDR = getlocalip();
 
