@@ -10,12 +10,20 @@ int metacommand(struct connection_t* co, char* buffer, fd_set* read_set) {
 		display(*co);
 
 	/* Change output direction of middle node to LEFT */
-	if (!strcmp(buffer, "outputl\n"))
-		co->OUTPUT_DIRECTION = 0;
+	if (!strcmp(buffer, "outputl\n")) {
+		if (!co->NO_LEFT)
+			co->OUTPUT_DIRECTION = 0;
+		else
+			co->OUTPUT_DIRECTION = 1;
+	}
 
 	/* Change output direction of middle node to RIGHT */
-	if (!strcmp(buffer, "outputr\n")) 
-		co->OUTPUT_DIRECTION = 1;
+	if (!strcmp(buffer, "outputr\n")) {
+		if (!co->NO_RIGHT)
+			co->OUTPUT_DIRECTION = 1;
+		else
+			co->OUTPUT_DIRECTION = 0;
+	}
 
 	/* Display current output direction */
 	if (!strcmp(buffer, "output\n")) {
@@ -27,18 +35,28 @@ int metacommand(struct connection_t* co, char* buffer, fd_set* read_set) {
 
 	/* Change data display direction to L - R */
 	if (!strcmp(buffer, "dsplr\n")) {
-		co->DISPLAY_LEFT_RIGHT = 1;
-		co->DISPLAY_RIGHT_LEFT = 0;
+		if (!co->NO_LEFT) {
+			co->DISPLAY_LEFT_RIGHT = 1;
+			co->DISPLAY_RIGHT_LEFT = 0;
+		} else {
+			co->DISPLAY_LEFT_RIGHT = 0;
+			co->DISPLAY_RIGHT_LEFT = 1;
+		}
 	}
 
 	/* Change data display direction to R - L */
 	if (!strcmp(buffer, "dsprl\n")) {
-		co->DISPLAY_LEFT_RIGHT = 0;
-		co->DISPLAY_RIGHT_LEFT = 1;
+		if (!co->NO_RIGHT) {
+			co->DISPLAY_LEFT_RIGHT = 0;
+			co->DISPLAY_RIGHT_LEFT = 1;
+		} else {
+			co->DISPLAY_LEFT_RIGHT = 1;
+			co->DISPLAY_RIGHT_LEFT = 0;
+		}
 	}
 
 	/* Display current data display direction */
-	if (!strcmp(buffer, "dsp\n")) {
+	if (!strcmp(buffer, "display\n")) {
 		if (co->DISPLAY_LEFT_RIGHT)
 			fprintf(stdout, "%s%s%s\n", "Display: Left", colorize(GREEN, " --> "), "Right");
 		if (co->DISPLAY_RIGHT_LEFT)
@@ -46,7 +64,7 @@ int metacommand(struct connection_t* co, char* buffer, fd_set* read_set) {
 	}
 
 	/* Drop right side connection */
-	if (!strcmp(buffer, "dropright\n")) {
+	if (!strcmp(buffer, "dropr\n")) {
 		if (co->LEFT_FACING_SOCKET > STDIN_FILENO)
 			co->MAX_FD = co->LEFT_FACING_SOCKET;
 		else
@@ -67,7 +85,7 @@ int metacommand(struct connection_t* co, char* buffer, fd_set* read_set) {
 	}
 
 	/* Drop left side connection */
-	if (!strcmp(buffer, "dropleft\n")) {
+	if (!strcmp(buffer, "dropl\n")) {
 		if (co->RIGHT_FACING_SOCKET > STDIN_FILENO)
 			co->MAX_FD = co->RIGHT_FACING_SOCKET;
 		else

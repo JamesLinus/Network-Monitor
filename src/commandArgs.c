@@ -146,6 +146,13 @@ struct connection_t argCheck (int argc, char* argv[]) {
 		co.LOOP_RIGHT = 0;
 		co.LOOP_LEFT = 0;
 	}
+	
+	/* Resolve output values */
+	if (co.NO_RIGHT)
+		co.OUTPUT_DIRECTION = 0;
+		
+	if (co.NO_LEFT)
+		co.OUTPUT_DIRECTION = 1;
 
 	/* Resolve LocalHost ip address */
 	if (co.RIGHT_REMOTE_ADDR != NULL && !strcmp(co.RIGHT_REMOTE_ADDR, "0.0.0.0"))

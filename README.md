@@ -58,13 +58,13 @@ Displays the data stream of a middle node moving from left to right.  This is th
 #### :dsprl
 Displays the data stream of a middle node moving from right to left.
 
-#### :dsp
+#### :display
 Displays on screen what direction the display of a middle node is currently set to.
 
-#### :dropright
+#### :dropr
 Drops the right side connection.
 
-#### :dropleft
+#### :dropl
 Drops the left side connection.
 
 #### :right
